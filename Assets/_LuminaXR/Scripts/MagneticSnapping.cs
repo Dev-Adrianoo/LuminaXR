@@ -10,6 +10,10 @@ using UnityEngine.XR.Management;
 
 public class MagneticSnapping : MonoBehaviour
 {
+    private Renderer vertexRenderer;
+    private MaterialPropertyBlock propBlock;
+    private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+
     [Header("Configurações Magnéticas")]
     public float magneticRadius = 0.05f;
     public LayerMask vertexLayer;
@@ -78,7 +82,6 @@ public class MagneticSnapping : MonoBehaviour
             smoothingInitialized = true;
         }
 
-
         // Learp = interpolação linear entre dois pontos
         // A cada frame, move smoothedFingerPosition X% em direção á posição real
         // Com dampenSpeed 0.15: MOVE 15% DA DISTANCIA RESTANTE, FICANDO MAIS LENTO QUANTO MAIS PERTO ESTIVER
@@ -95,11 +98,19 @@ public class MagneticSnapping : MonoBehaviour
         bool isPinching = pinchDistance < 0.03f; // 3cm = gesto de pinça
 
         if (isPinching && snappedVertex == null)
+        {
             SearchForVertex(origin);
+        }
         else if (!isPinching && snappedVertex != null)
+        {
+            ClearVertexColor();
             snappedVertex = null; // Solta ao abrir a mão
+            vertexRenderer = null;
+        }
         else if (isPinching && snappedVertex != null)
+        {
             MaintainSnap(origin);
+        }
     }
 
     private void SearchForVertex(Vector3 origin)
@@ -108,13 +119,18 @@ public class MagneticSnapping : MonoBehaviour
 
         if (hits.Length > 0)
         {
-            snappedVertex = hits[0].transform;
-            Debug.DrawLine(origin, snappedVertex.position, Color.green);
+            snappedVertex = hits[0].transform; // pega o primeiro vertice encontrado
+            vertexRenderer = snappedVertex.GetComponent<Renderer>();
+            propBlock = new MaterialPropertyBlock();
+            setVertexColor(Color.green);
+            Debug.DrawLine(origin,snappedVertex.position, Color.green);
         }
         else
         {
             DrawRedCross(origin);
         }
+
+
     }
 
     private void MaintainSnap(Vector3 origin)
@@ -130,5 +146,18 @@ public class MagneticSnapping : MonoBehaviour
         Debug.DrawLine(pos - Vector3.up * d, pos + Vector3.up * d, Color.red);
         Debug.DrawLine(pos - Vector3.right * d, pos + Vector3.right * d, Color.red);
         Debug.DrawLine(pos - Vector3.forward * d, pos + Vector3.forward * d, Color.red);
+    }
+
+    private void setVertexColor(Color color)
+    {
+        if (vertexRenderer == null || propBlock == null) return;
+        propBlock.SetColor(BaseColorId, color);
+        vertexRenderer.SetPropertyBlock(propBlock);
+    }
+
+    private void ClearVertexColor()
+    {
+        if (vertexRenderer == null) return;
+        vertexRenderer.SetPropertyBlock(null);
     }
 }

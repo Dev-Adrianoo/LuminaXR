@@ -1358,6 +1358,7 @@ MonoBehaviour:
   vertexLayer:
     serializedVersion: 2
     m_Bits: 8
+  dampeningSpeed: 0.15
 --- !u!4 &849256436
 Transform:
   m_ObjectHideFlags: 0
@@ -1581,6 +1582,8 @@ GameObject:
   - component: {fileID: 1587376520}
   - component: {fileID: 1587376519}
   - component: {fileID: 1587376518}
+  - component: {fileID: 1587376522}
+  - component: {fileID: 1587376523}
   m_Layer: 3
   m_Name: TestVertex
   m_TagString: Untagged
@@ -1681,6 +1684,32 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1587376522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587376517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fb04370b0882c946ac6877478cdd8f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VertexMarker
+  vertexMarkerPrefab: {fileID: 419916162511951865, guid: afa07b09be663404b8e6bba472922068, type: 3}
+  markerScale: 0.02
+--- !u!114 &1587376523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587376517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca601c3d3d8dd4c44905544217f5039c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MeshInspector
 --- !u!1 &1887302982
 GameObject:
   m_ObjectHideFlags: 0

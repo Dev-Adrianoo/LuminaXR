@@ -13,7 +13,7 @@ public class VertexMarker : MonoBehaviour
 
 
     [Tooltip("Tamanho visual da esfera. Não afeta a zona de detecção do MagneticSnapping")]
-    public float markerScale = 0.02f; // 2cm
+    public float markerScale = 0.01f; // 1cm
 
     // As 8 quinas de um cubo unitário em coordenadas locais
     // Unity usa cubo de tamanho 1x1x1, então as quinas ficam em ±0.5 em cada eixo
@@ -29,7 +29,7 @@ public class VertexMarker : MonoBehaviour
         new Vector3( 0.5f,  0.5f,  0.5f),
     };
 
-    void Start()
+    private void Awake()
     {
         if (vertexMarkerPrefab == null)
         {

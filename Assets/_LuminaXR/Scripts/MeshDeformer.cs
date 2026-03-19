@@ -1,4 +1,3 @@
-using UnityEditor.Rendering;
 using UnityEngine;
 
 public class MeshDeformer : MonoBehaviour
@@ -16,19 +15,32 @@ public class MeshDeformer : MonoBehaviour
         MeshFilter meshFilter = GetComponent<MeshFilter>();
         mesh = meshFilter.mesh;
 
+        vertices = mesh.vertices;
+
         spheres = new Transform[transform.childCount];
+        vertexMap = new int[spheres.Length][];
 
         for (int i = 0; i < spheres.Length;  i++)
         {
             spheres[i] = transform.GetChild(i);
-        } 
+        }
+
+        BuildVertexMap();
 
     }
 
-    // Update is called once per frame
     void Update()
     {
-        
+        for(int i = 0; i < spheres.Length; i++)
+        {
+            for (int j = 0; j < vertexMap[i].Length; j++)
+            {
+                vertices[vertexMap[i][j]] = transform.InverseTransformPoint(spheres[i].position);
+            }
+        }
+        mesh.vertices = vertices;
+        mesh.RecalculateNormals();
+
     }
 
       void BuildVertexMap()
@@ -36,12 +48,10 @@ public class MeshDeformer : MonoBehaviour
         for(int i = 0; i <  spheres.Length; i++)
         {
               var matches = new System.Collections.Generic.List<int>();
-
+              Vector3 localPos = transform.InverseTransformPoint(spheres[i].position);
             for (int j = 0; j < vertices.Length; j++)
             {
-                Vector3 localPos = transform.InverseTransformPoint(spheres[i].position);
-
-
+                
                 if (Vector3.Distance(vertices[j], localPos) < 0.001f)
                 {
                     matches.Add(j);

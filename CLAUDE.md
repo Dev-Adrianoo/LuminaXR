@@ -45,7 +45,12 @@ Hand Tracking Subsystem, Meta XR Foveation, Palm Pose
 
 ## Roadmap
 ✅ Pinch & Snap · Dampening · Visual Feedback · Vertex Markers
-🔲 Next: Mesh API → connect spheres to real mesh vertices
+✅ Mesh API → MeshDeformer conectado às esferas, deformação funcionando no Quest
+✅ Rotação com a mão
+✅ Fechar mão → objeto gruda · Fechar de novo → modo preview (flutua e gira automaticamente)
+🔲 Rotação com 2 dedos girando no ar → rotação intencional para modelar
+🔲 Suporte a duas mãos → segurar com uma · modelar com a outra
+🔲 Polimento geral: thresholds, feedback visual, estabilidade
 
 ## AI Assistant Guidelines
 This developer is LEARNING. Prioritize teaching over solving.

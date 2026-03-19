@@ -129,8 +129,6 @@ public class MagneticSnapping : MonoBehaviour
         {
             DrawRedCross(origin);
         }
-
-
     }
 
     private void MaintainSnap(Vector3 origin)

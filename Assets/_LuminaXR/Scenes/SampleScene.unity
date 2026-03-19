@@ -1584,6 +1584,8 @@ GameObject:
   - component: {fileID: 1587376518}
   - component: {fileID: 1587376522}
   - component: {fileID: 1587376523}
+  - component: {fileID: 1587376524}
+  - component: {fileID: 1587376525}
   m_Layer: 3
   m_Name: TestVertex
   m_TagString: Untagged
@@ -1697,7 +1699,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VertexMarker
   vertexMarkerPrefab: {fileID: 419916162511951865, guid: afa07b09be663404b8e6bba472922068, type: 3}
-  markerScale: 0.02
+  markerScale: 0.01
 --- !u!114 &1587376523
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1710,6 +1712,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca601c3d3d8dd4c44905544217f5039c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MeshInspector
+--- !u!114 &1587376524
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587376517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecf3ba59f2ab3344bafdcf02388a8697, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MeshDeformer
+--- !u!114 &1587376525
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587376517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2739e6f223aee4a43bb58b1db7f72ec6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ObjectGrab
 --- !u!1 &1887302982
 GameObject:
   m_ObjectHideFlags: 0

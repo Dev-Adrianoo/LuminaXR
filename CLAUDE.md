@@ -27,9 +27,12 @@ OVRSkeleton requires Meta proprietary extensions — incompatible with VDXR.
 Windows = Editor/VDXR · Android = Quest build · Same code, no changes.
 
 ## Scripts
-MagneticSnapping.cs — pinch, snap, dampening, color feedback
-VertexMarker.cs — spawns spheres at cube corners runtime
+MagneticSnapping.cs — pinch simultâneo (2 mãos), snap, dampening, color feedback, integra VertexHUD
+VertexMarker.cs — spawns spheres at cube corners runtime (markerScale 0.05)
 MeshInspector.cs — read-only mesh logger (diagnostic)
+MeshDeformer.cs — vertexMap int[][], deforma mesh real acompanhando spheres
+ObjectGrab.cs — fist detection ambas as mãos, dynamic role assignment, preview mode
+VertexHUD.cs — texto flutuante (TMP 3D) mostrando distância durante arrasto
 
 ## Conventions
 - One responsibility per script
@@ -49,8 +52,9 @@ Hand Tracking Subsystem, Meta XR Foveation, Palm Pose
 ✅ Rotação com a mão
 ✅ Fechar mão → objeto gruda · Fechar de novo → modo preview (flutua e gira automaticamente)
 🔲 Rotação com 2 dedos girando no ar → rotação intencional para modelar
-🔲 Suporte a duas mãos → segurar com uma · modelar com a outra
+✅ Suporte a duas mãos → pinch simultâneo, dynamic role assignment, pausa preview ao modelar
 🔲 Polimento geral: thresholds, feedback visual, estabilidade
+✅ Value HUD / Transform Overlay → texto flutuante mostrando distância ao mover vértice (VertexHUD.cs)
 
 ## AI Assistant Guidelines
 This developer is LEARNING. Prioritize teaching over solving.
@@ -73,3 +77,16 @@ This developer is LEARNING. Prioritize teaching over solving.
 - Never analyze the entire project upfront
 - Request only specific files when needed
 - Prefer small focused snippets over large files
+
+## Obsidian (Cérebro Externo)
+Caminho: `C:\Users\Adria\Documents\Documentation\Dev-Logs\LuminaXR_Dev Log\`
+
+- **Dev Log.md** → roadmap visual com status de cada feature
+- **YYYY-MM-DD_Sessao.md** → log detalhado de cada sessão (bugs, fixes, aprendizados)
+- **Conceitos.md** → conceitos técnicos aprendidos
+
+Usar como:
+- Fonte de contexto: consultar logs anteriores antes de retomar trabalho
+- Histórico de bugs: procurar erros e soluções que já aconteceram
+- Documentação: ao final de cada sessão, criar/atualizar o log do dia
+- Aprendizados: registrar lições técnicas (ex: serialização de prefabs sobrescreve código)

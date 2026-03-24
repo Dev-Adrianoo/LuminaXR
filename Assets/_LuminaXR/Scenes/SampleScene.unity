@@ -1586,7 +1586,7 @@ GameObject:
   - component: {fileID: 1587376523}
   - component: {fileID: 1587376524}
   - component: {fileID: 1587376525}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: TestVertex
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1736,6 +1736,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2739e6f223aee4a43bb58b1db7f72ec6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectGrab
+  grabRange: 0.15
+  floatHeight: 0.1
+  rotateSpeed: 45
+  bobHeight: 0.02
+  bobSpeed: 1.5
 --- !u!1 &1887302982
 GameObject:
   m_ObjectHideFlags: 0

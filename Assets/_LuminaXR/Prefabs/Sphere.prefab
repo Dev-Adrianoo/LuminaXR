@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7511621261984687836}
   - component: {fileID: 2860468296060703260}
   - component: {fileID: 1786075636853184279}
+  - component: {fileID: 6715636425475629113}
   m_Layer: 3
   m_Name: Sphere
   m_TagString: Untagged
@@ -112,3 +113,17 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.5
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &6715636425475629113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 419916162511951865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf7f2b650cf78ba4983e15e7e6e265b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VertexHUD
+  offsetY: 0.05
+  fontSize: 0.5

@@ -1,8 +1,11 @@
-/// <summary> 
-/// /// Sistema de AtraÁ„o MagnÈtica de VÈrtices para VR. 
-/// /// Dispara uma esfera de colis„o (ShepereCast) a partir do dedo do usu·rio 
-/// /// para capturar vÈrtices prÛximos, compensando a falta de precis„o motora. 
-/// /// </summary>
+/// <summary>
+/// Sistema de Atra√ß√£o Magn√©tica de V√©rtices para VR.
+/// Dispara uma esfera de colis√£o (OverlapSphere) a partir do dedo do usu√°rio
+/// para capturar v√©rtices pr√≥ximos, compensando a falta de precis√£o motora.
+/// Suporta pinch simult√¢neo: cada m√£o pode modelar um v√©rtice ao mesmo tempo.
+/// Integra com VertexHUD para exibir dist√¢ncia durante o arrasto.
+/// Exp√µe IsPinching pra que o ObjectGrab saiba quando pausar o preview.
+/// </summary>
 
 using UnityEngine;
 using UnityEngine.XR.Hands;
@@ -10,26 +13,40 @@ using UnityEngine.XR.Management;
 
 public class MagneticSnapping : MonoBehaviour
 {
-    private Renderer vertexRenderer;
-    private MaterialPropertyBlock propBlock;
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
-    [Header("ConfiguraÁıes MagnÈticas")]
+    [Header("Configura√ß√µes Magn√©ticas")]
     public float magneticRadius = 0.05f;
     public LayerMask vertexLayer;
 
-    [Header("Dempening (Filtro de Jitter)")]
+    [Header("Dampening (Filtro de Jitter)")]
     [Tooltip("0 = sem movimento, 1 = Sem filtro ( Jitter bruto ). Recomendado: 0.15")]
     [Range(0f, 1f)]
     public float dampeningSpeed = 0.15f;
 
     private XRHandSubsystem handSubsystem;
-    private Transform snappedVertex = null;
 
-    // Guarda a posiÁ„o suavizada do dedo - separada da posiÁ„o bruta do SDK
-    private Vector3 smoothedFingerPosition;
-    private bool smoothingInitialized = false;
+    // Estado por m√£o ‚Äî cada m√£o tem seu pr√≥prio snap independente
+    private Transform snappedLeft;
+    private Transform snappedRight;
+    private Renderer rendererLeft;
+    private Renderer rendererRight;
+    private MaterialPropertyBlock propBlockLeft;
+    private MaterialPropertyBlock propBlockRight;
+    private VertexHUD hudLeft;
+    private VertexHUD hudRight;
 
+    // Smoothing separado por m√£o
+    private Vector3 smoothedLeft;
+    private Vector3 smoothedRight;
+    private bool smoothInitLeft;
+    private bool smoothInitRight;
+
+    /// <summary>
+    /// Retorna true se qualquer m√£o est√° pin√ßando um v√©rtice.
+    /// Usado pelo ObjectGrab pra pausar o preview.
+    /// </summary>
+    public bool IsPinching => snappedLeft != null || snappedRight != null;
 
     void OnEnable()
     {
@@ -45,97 +62,151 @@ public class MagneticSnapping : MonoBehaviour
         else
         {
             Debug.LogError("[MagneticSnapping] Nenhum XRHandSubsystem encontrado. " +
-                           "Verifique se Hand Tracking Subsystem est· ativo no OpenXR.");
+                           "Verifique se Hand Tracking Subsystem est√° ativo no OpenXR.");
         }
     }
 
     void OnDisable()
     {
         handSubsystem?.Stop();
-        smoothingInitialized = false;
+        smoothInitLeft = false;
+        smoothInitRight = false;
     }
 
     void Update()
     {
         if (handSubsystem == null || !handSubsystem.running) return;
 
-        XRHand hand = handSubsystem.rightHand;
+        // Processa as duas m√£os sempre ‚Äî independente uma da outra
+        ProcessHand(handSubsystem.leftHand, true);
+        ProcessHand(handSubsystem.rightHand, false);
+    }
+
+    private void ProcessHand(XRHand hand, bool isLeft)
+    {
+        // Refer√™ncias por m√£o
+        Transform snapped = isLeft ? snappedLeft : snappedRight;
+
         if (!hand.isTracked)
         {
-            //Reseta o smoothing quando perde o tracking.
-            // Evita o dedo "Voar" de volta de uma posiÁ„o antiga ao reaparecer.
-            smoothingInitialized = false;
+            if (isLeft) smoothInitLeft = false;
+            else smoothInitRight = false;
             return;
         }
 
-
-        // Pega posiÁıes do indicador e do polegar
+        // Pega posi√ß√µes do indicador e do polegar
         bool hasIndex = hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose);
         bool hasThumb = hand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumbPose);
 
         if (!hasIndex || !hasThumb) return;
 
-
-        if (!smoothingInitialized)
+        // Smoothing por m√£o
+        if (isLeft)
         {
-            smoothedFingerPosition = indexPose.position;
-            smoothingInitialized = true;
+            if (!smoothInitLeft) { smoothedLeft = indexPose.position; smoothInitLeft = true; }
+            smoothedLeft = Vector3.Lerp(smoothedLeft, indexPose.position, dampeningSpeed);
+        }
+        else
+        {
+            if (!smoothInitRight) { smoothedRight = indexPose.position; smoothInitRight = true; }
+            smoothedRight = Vector3.Lerp(smoothedRight, indexPose.position, dampeningSpeed);
         }
 
-        // Learp = interpolaÁ„o linear entre dois pontos
-        // A cada frame, move smoothedFingerPosition X% em direÁ„o · posiÁ„o real
-        // Com dampenSpeed 0.15: MOVE 15% DA DISTANCIA RESTANTE, FICANDO MAIS LENTO QUANTO MAIS PERTO ESTIVER
-        // resultado: movimento r·pidos ficam suavizados, movimentos lentos s„o precisos
-
-        smoothedFingerPosition = Vector3.Lerp(
-            smoothedFingerPosition, // de onde estou
-            indexPose.position, // para onde quero ir (posiÁ„o bruta do SDK)
-            dampeningSpeed // qu„o r·pido chego l·
-            );
-
-        Vector3 origin = smoothedFingerPosition;
+        Vector3 origin = isLeft ? smoothedLeft : smoothedRight;
         float pinchDistance = Vector3.Distance(indexPose.position, thumbPose.position);
-        bool isPinching = pinchDistance < 0.03f; // 3cm = gesto de pinÁa
+        bool isPinching = pinchDistance < 0.03f;
 
-        if (isPinching && snappedVertex == null)
+        if (isPinching && snapped == null)
         {
-            SearchForVertex(origin);
+            // Procura v√©rtice pra essa m√£o
+            Transform found = SearchForVertex(origin, isLeft);
+            if (isLeft) snappedLeft = found;
+            else snappedRight = found;
         }
-        else if (!isPinching && snappedVertex != null)
+        else if (!isPinching && snapped != null)
         {
-            ClearVertexColor();
-            snappedVertex = null; // Solta ao abrir a m„o
-            vertexRenderer = null;
+            // Solta o v√©rtice dessa m√£o
+            ReleaseVertex(isLeft);
         }
-        else if (isPinching && snappedVertex != null)
+        else if (isPinching && snapped != null)
         {
-            MaintainSnap(origin);
+            // Mant√©m o snap dessa m√£o
+            MaintainSnap(origin, isLeft);
         }
     }
 
-    private void SearchForVertex(Vector3 origin)
+    private Transform SearchForVertex(Vector3 origin, bool isLeft)
     {
         Collider[] hits = Physics.OverlapSphere(origin, magneticRadius, vertexLayer);
 
         if (hits.Length > 0)
         {
-            snappedVertex = hits[0].transform; // pega o primeiro vertice encontrado
-            vertexRenderer = snappedVertex.GetComponent<Renderer>();
-            propBlock = new MaterialPropertyBlock();
-            setVertexColor(Color.green);
-            Debug.DrawLine(origin,snappedVertex.position, Color.green);
+            // Evita que as duas m√£os peguem a mesma sphere
+            Transform other = isLeft ? snappedRight : snappedLeft;
+            foreach (Collider hit in hits)
+            {
+                if (hit.transform == other) continue; // j√° pegada pela outra m√£o
+
+                Transform vertex = hit.transform;
+                Renderer rend = vertex.GetComponent<Renderer>();
+                MaterialPropertyBlock prop = new MaterialPropertyBlock();
+                VertexHUD hud = vertex.GetComponent<VertexHUD>();
+
+                if (isLeft)
+                {
+                    rendererLeft = rend;
+                    propBlockLeft = prop;
+                    hudLeft = hud;
+                }
+                else
+                {
+                    rendererRight = rend;
+                    propBlockRight = prop;
+                    hudRight = hud;
+                }
+
+                SetVertexColor(rend, prop, Color.green);
+                if (hud != null) hud.Show();
+                Debug.DrawLine(origin, vertex.position, Color.green);
+                return vertex;
+            }
+        }
+
+        DrawRedCross(origin);
+        return null;
+    }
+
+    private void MaintainSnap(Vector3 origin, bool isLeft)
+    {
+        Transform snapped = isLeft ? snappedLeft : snappedRight;
+        VertexHUD hud = isLeft ? hudLeft : hudRight;
+
+        if (snapped == null) return;
+        snapped.position = origin;
+        if (hud != null) hud.UpdateHUD();
+        Debug.DrawLine(origin, snapped.position, Color.green);
+    }
+
+    private void ReleaseVertex(bool isLeft)
+    {
+        if (isLeft)
+        {
+            ClearVertexColor(rendererLeft);
+            if (hudLeft != null) hudLeft.Hide();
+            hudLeft = null;
+            snappedLeft = null;
+            rendererLeft = null;
+            propBlockLeft = null;
         }
         else
         {
-            DrawRedCross(origin);
+            ClearVertexColor(rendererRight);
+            if (hudRight != null) hudRight.Hide();
+            hudRight = null;
+            snappedRight = null;
+            rendererRight = null;
+            propBlockRight = null;
         }
-    }
-
-    private void MaintainSnap(Vector3 origin)
-    {
-        if (snappedVertex == null) return;
-        snappedVertex.position = origin;
-        Debug.DrawLine(origin, snappedVertex.position, Color.green);
     }
 
     private void DrawRedCross(Vector3 pos)
@@ -146,16 +217,16 @@ public class MagneticSnapping : MonoBehaviour
         Debug.DrawLine(pos - Vector3.forward * d, pos + Vector3.forward * d, Color.red);
     }
 
-    private void setVertexColor(Color color)
+    private void SetVertexColor(Renderer rend, MaterialPropertyBlock prop, Color color)
     {
-        if (vertexRenderer == null || propBlock == null) return;
-        propBlock.SetColor(BaseColorId, color);
-        vertexRenderer.SetPropertyBlock(propBlock);
+        if (rend == null || prop == null) return;
+        prop.SetColor(BaseColorId, color);
+        rend.SetPropertyBlock(prop);
     }
 
-    private void ClearVertexColor()
+    private void ClearVertexColor(Renderer rend)
     {
-        if (vertexRenderer == null) return;
-        vertexRenderer.SetPropertyBlock(null);
+        if (rend == null) return;
+        rend.SetPropertyBlock(null);
     }
 }

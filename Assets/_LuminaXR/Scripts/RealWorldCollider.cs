@@ -7,6 +7,8 @@ using UnityEngine;
 /// </summary>
 public class RealWorldCollider : MonoBehaviour
 {
+    [SerializeField] private Transform _trackingSpace;
+
     private void Start()
     {
         LoadSceneAsync();
@@ -25,6 +27,20 @@ public class RealWorldCollider : MonoBehaviour
         {
             SingleComponentType = typeof(OVRRoomLayout),
         });
+
+        if (rooms.Count == 0)
+        {
+            Debug.Log("[RealWorldCollider] Nenhum quarto encontrado. Solicitando scan do ambiente...");
+            var scanned = await OVRScene.RequestSpaceSetup();
+            if (!scanned) return;
+
+            await OVRAnchor.FetchAnchorsAsync(rooms, new OVRAnchor.FetchOptions
+            {
+                SingleComponentType = typeof(OVRRoomLayout),
+            });
+        }
+
+        Debug.Log($"[RealWorldCollider] Quartos encontrados: {rooms.Count}");
 
         foreach (var room in rooms)
         {
@@ -45,12 +61,14 @@ public class RealWorldCollider : MonoBehaviour
                 await locatable.SetEnabledAsync(true);
 
                 if (!locatable.TryGetSceneAnchorPose(out var pose)) continue;
-                var position = pose.ComputeWorldPosition(Camera.main.transform);
-                var rotation = pose.ComputeWorldRotation(Camera.main.transform);
+                var position = pose.ComputeWorldPosition(_trackingSpace);
+                var rotation = pose.ComputeWorldRotation(_trackingSpace);
 
                 var go = new GameObject(string.Join(", ", classifications));
                 go.transform.SetPositionAndRotation(position ?? Vector3.zero, rotation ?? Quaternion.identity);
-                go.AddComponent<BoxCollider>();
+                var collider = go.AddComponent<BoxCollider>();
+                if (child.TryGetComponent(out OVRBounded3D bounds) && bounds.IsEnabled)
+                    collider.size = bounds.BoundingBox.size;
             }
         }
     }

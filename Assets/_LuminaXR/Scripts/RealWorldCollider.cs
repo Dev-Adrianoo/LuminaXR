@@ -64,11 +64,24 @@ public class RealWorldCollider : MonoBehaviour
                 var position = pose.ComputeWorldPosition(_trackingSpace);
                 var rotation = pose.ComputeWorldRotation(_trackingSpace);
 
+                var hasBounds3D = child.TryGetComponent(out OVRBounded3D bounds3D);
+                var hasBounds2D = child.TryGetComponent(out OVRBounded2D bounds2D);
+                if (!hasBounds3D && !hasBounds2D) continue;
+
                 var go = new GameObject(string.Join(", ", classifications));
                 go.transform.SetPositionAndRotation(position ?? Vector3.zero, rotation ?? Quaternion.identity);
                 var collider = go.AddComponent<BoxCollider>();
-                if (child.TryGetComponent(out OVRBounded3D bounds) && bounds.IsEnabled)
-                    collider.size = bounds.BoundingBox.size;
+
+                if (bounds3D != null && bounds3D.IsEnabled)
+                {
+                    collider.size = bounds3D.BoundingBox.size;
+                }
+
+                if (bounds2D != null && bounds2D.IsEnabled)
+                {
+                    var r = bounds2D.BoundingBox;
+                    collider.size = new Vector3(r.width, r.height, 0.05f);
+                }
             }
         }
     }

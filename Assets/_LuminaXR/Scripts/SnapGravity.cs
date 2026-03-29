@@ -13,6 +13,8 @@ public class SnapGravity : MonoBehaviour
 
     private XRHandSubsystem _handSubsystem;
 
+    public bool IsSnapping { get; private set; }
+
     private bool _rightWasPinching;
     private bool _leftWasPinching;
 
@@ -39,6 +41,7 @@ public class SnapGravity : MonoBehaviour
         if (_target == null) return;
         CheckSnap(subsystem.rightHand, ref _rightWasPinching, enableGravity: true);
         CheckSnap(subsystem.leftHand, ref _leftWasPinching, enableGravity: false);
+        IsSnapping = _rightWasPinching || _leftWasPinching;
     }
 
     private void CheckSnap(XRHand hand, ref bool wasPinching, bool enableGravity)
@@ -49,8 +52,7 @@ public class SnapGravity : MonoBehaviour
 
         float distance = Vector3.Distance(thumbPose.position, middlePose.position);
         float middleToPalm = Vector3.Distance(middlePose.position, palmPose.position);
-        bool isPinching = distance < PinchThreshold;
-        // bool middleNearPalm = middleToPalm < 0.05f; // calibrar no Quest com mãos reais
+        bool isPinching = distance < PinchThreshold && middleToPalm < 0.08f;
 
         if (wasPinching && distance > SnapReleaseThreshold)
         {

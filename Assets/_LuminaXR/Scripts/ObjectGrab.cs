@@ -94,11 +94,15 @@ public class ObjectGrab : MonoBehaviour
                 // Nenhuma mão segurando → essa mão pega
                 isGrabbing = true;
                 grabbedByLeft = isLeft;
+                var rb = GetComponent<Rigidbody>();
+                if (rb != null) rb.isKinematic = true;
             }
             else if (grabbedByLeft == isLeft)
             {
                 // Mesma mão fecha de novo → solta
                 isGrabbing = false;
+                var rb = GetComponent<Rigidbody>();
+                if (rb != null) rb.isKinematic = false;
             }
         }
 

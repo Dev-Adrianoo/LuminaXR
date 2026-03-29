@@ -108,5 +108,6 @@ public class MRToggle : MonoBehaviour
     {
         isMRActive = !isMRActive;
         passthroughLayer.enabled = isMRActive;
+        OVRManager.boundary.SetVisible(!isMRActive);
     }
 }

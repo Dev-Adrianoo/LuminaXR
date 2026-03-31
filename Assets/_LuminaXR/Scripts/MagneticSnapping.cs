@@ -1,10 +1,9 @@
 /// <summary>
-/// Sistema de Atração Magnética de Vértices para VR.
-/// Dispara uma esfera de colisão (OverlapSphere) a partir do dedo do usuário
-/// para capturar vértices próximos, compensando a falta de precisão motora.
-/// Suporta pinch simultâneo: cada mão pode modelar um vértice ao mesmo tempo.
+/// Sistema de atração magnética de vértices.
+/// OverlapSphere na ponta do indicador captura vértices próximos via pinch.
+/// Suporta pinch simultâneo: cada mão modela um vértice independentemente.
 /// Integra com VertexHUD para exibir distância durante o arrasto.
-/// Expõe IsPinching pra que o ObjectGrab saiba quando pausar o preview.
+/// Expõe IsPinching e IsActive para que outros scripts saibam quando está modelando.
 /// </summary>
 
 using UnityEngine;
@@ -26,7 +25,6 @@ public class MagneticSnapping : MonoBehaviour
 
     private XRHandSubsystem handSubsystem;
 
-    // Estado por mão — cada mão tem seu próprio snap independente
     private Transform snappedLeft;
     private Transform snappedRight;
     private Renderer rendererLeft;
@@ -36,17 +34,14 @@ public class MagneticSnapping : MonoBehaviour
     private VertexHUD hudLeft;
     private VertexHUD hudRight;
 
-    // Smoothing separado por mão
     private Vector3 smoothedLeft;
     private Vector3 smoothedRight;
     private bool smoothInitLeft;
     private bool smoothInitRight;
 
-    /// <summary>
-    /// Retorna true se qualquer mão está pinçando um vértice.
-    /// Usado pelo ObjectGrab pra pausar o preview.
-    /// </summary>
     public bool IsPinching => snappedLeft != null || snappedRight != null;
+    public bool IsActive => IsPinching;
+    public bool IsActiveForHand(bool isLeft) => isLeft ? snappedLeft != null : snappedRight != null;
 
     void OnEnable()
     {
@@ -77,14 +72,12 @@ public class MagneticSnapping : MonoBehaviour
     {
         if (handSubsystem == null || !handSubsystem.running) return;
 
-        // Processa as duas mãos sempre — independente uma da outra
         ProcessHand(handSubsystem.leftHand, true);
         ProcessHand(handSubsystem.rightHand, false);
     }
 
     private void ProcessHand(XRHand hand, bool isLeft)
     {
-        // Referências por mão
         Transform snapped = isLeft ? snappedLeft : snappedRight;
 
         if (!hand.isTracked)
@@ -94,13 +87,11 @@ public class MagneticSnapping : MonoBehaviour
             return;
         }
 
-        // Pega posições do indicador e do polegar
         bool hasIndex = hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose);
         bool hasThumb = hand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumbPose);
 
         if (!hasIndex || !hasThumb) return;
 
-        // Smoothing por mão
         if (isLeft)
         {
             if (!smoothInitLeft) { smoothedLeft = indexPose.position; smoothInitLeft = true; }
@@ -118,19 +109,16 @@ public class MagneticSnapping : MonoBehaviour
 
         if (isPinching && snapped == null)
         {
-            // Procura vértice pra essa mão
             Transform found = SearchForVertex(origin, isLeft);
             if (isLeft) snappedLeft = found;
             else snappedRight = found;
         }
         else if (!isPinching && snapped != null)
         {
-            // Solta o vértice dessa mão
             ReleaseVertex(isLeft);
         }
         else if (isPinching && snapped != null)
         {
-            // Mantém o snap dessa mão
             MaintainSnap(origin, isLeft);
         }
     }
@@ -141,11 +129,10 @@ public class MagneticSnapping : MonoBehaviour
 
         if (hits.Length > 0)
         {
-            // Evita que as duas mãos peguem a mesma sphere
             Transform other = isLeft ? snappedRight : snappedLeft;
             foreach (Collider hit in hits)
             {
-                if (hit.transform == other) continue; // já pegada pela outra mão
+                if (hit.transform == other) continue;
 
                 Transform vertex = hit.transform;
                 Renderer rend = vertex.GetComponent<Renderer>();

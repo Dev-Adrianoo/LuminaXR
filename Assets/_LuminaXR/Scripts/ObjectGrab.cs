@@ -7,6 +7,7 @@ using UnityEngine.XR.Management;
 /// Suporta ambas as mãos com atribuição dinâmica: a primeira mão que fechar
 /// vira a mão de segurar. Mesma mão fecha de novo → solta.
 /// Pausa o preview (bob + rotação) quando o MagneticSnapping está pinçando.
+/// Expõe IsActive para que outros scripts saibam quando o grab está em curso.
 /// </summary>
 public class ObjectGrab : MonoBehaviour
 {
@@ -26,15 +27,16 @@ public class ObjectGrab : MonoBehaviour
     public float bobHeight = 0.02f;
     public float bobSpeed = 1.5f;
 
+    public bool IsActive => isGrabbing;
+    public bool IsActiveForHand(bool isLeft) => isGrabbing && grabbedByLeft == isLeft;
+
     void Update()
     {
         if (handSubsystem == null || !handSubsystem.running) return;
 
-        // Verifica as duas mãos pra detectar fist
         CheckHand(handSubsystem.leftHand, ref wasFistLeft, true);
         CheckHand(handSubsystem.rightHand, ref wasFistRight, false);
 
-        // Se está segurando, acompanha a mão que segurou
         if (isGrabbing)
         {
             XRHand activeHand = grabbedByLeft ? handSubsystem.leftHand : handSubsystem.rightHand;
@@ -43,7 +45,6 @@ public class ObjectGrab : MonoBehaviour
             bool hasPalm = activeHand.GetJoint(XRHandJointID.Palm).TryGetPose(out Pose palmPose);
             if (!hasPalm) return;
 
-            // Segue a palma sempre, mas só faz preview se não estiver pinçando
             transform.position = palmPose.position + Vector3.up * floatHeight;
 
             bool isPinching = magneticSnapping != null && magneticSnapping.IsPinching;
@@ -56,7 +57,6 @@ public class ObjectGrab : MonoBehaviour
         }
     }
 
-    // Verifica se uma mão específica fez o gesto de fist
     private void CheckHand(XRHand hand, ref bool wasFist, bool isLeft)
     {
         if (!hand.isTracked)
@@ -91,7 +91,6 @@ public class ObjectGrab : MonoBehaviour
         {
             if (!isGrabbing)
             {
-                // Nenhuma mão segurando → essa mão pega
                 isGrabbing = true;
                 grabbedByLeft = isLeft;
                 var rb = GetComponent<Rigidbody>();
@@ -99,7 +98,6 @@ public class ObjectGrab : MonoBehaviour
             }
             else if (grabbedByLeft == isLeft)
             {
-                // Mesma mão fecha de novo → solta
                 isGrabbing = false;
                 var rb = GetComponent<Rigidbody>();
                 if (rb != null) rb.isKinematic = false;
@@ -125,7 +123,6 @@ public class ObjectGrab : MonoBehaviour
                           "Verifique se Hand Tracking Subsystem está ativo no OpenXR.");
         }
 
-        // Busca o MagneticSnapping na cena pra saber quando pausar o preview
         magneticSnapping = FindAnyObjectByType<MagneticSnapping>();
     }
 

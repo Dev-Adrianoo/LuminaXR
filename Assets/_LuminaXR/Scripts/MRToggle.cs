@@ -3,7 +3,10 @@ using UnityEngine.UI;
 using UnityEngine.XR.Hands;
 using UnityEngine.XR.Management;
 
-// Detecta dois punhos simultâneos por 2s → alterna entre VR (fundo preto) e MR (passthrough)
+/// <summary>
+/// Detecta dois punhos simultâneos por 2s → alterna entre VR (fundo preto) e MR (passthrough).
+/// Loading radial nas palmas durante o hold. Guardian desliga em MR, liga em VR.
+/// </summary>
 public class MRToggle : MonoBehaviour
 {
     [Header("Referências")]
@@ -15,7 +18,7 @@ public class MRToggle : MonoBehaviour
 
     [Header("Configuração")]
     public float holdDuration = 2f;
-    public float fistThreshold = 0.07f; // 7cm, mesmo threshold do ObjectGrab
+    public float fistThreshold = 0.07f;
 
     private XRHandSubsystem handSubsystem;
     private float timer = 0f;
@@ -31,7 +34,6 @@ public class MRToggle : MonoBehaviour
 
     void Start()
     {
-        // lê o estado inicial do passthrough em vez de assumir
         isMRActive = passthroughLayer != null && passthroughLayer.enabled;
         SetFill(0f);
     }
@@ -88,16 +90,13 @@ public class MRToggle : MonoBehaviour
     {
         if (!hand.GetJoint(XRHandJointID.Palm).TryGetPose(out Pose palmPose)) return;
 
-        // posiciona acima da palma
         canvas.transform.position = palmPose.position + Vector3.up * 0.12f;
-        // sempre enfrenta a câmera (billboard)
         canvas.transform.rotation = Camera.main.transform.rotation;
     }
 
     private void SetFill(float value)
     {
         bool show = value > 0f;
-        // usa a referência direta do canvas — image.canvas retorna null quando inativo
         leftCanvas.gameObject.SetActive(show);
         rightCanvas.gameObject.SetActive(show);
         leftFillImage.fillAmount = value;
@@ -108,6 +107,5 @@ public class MRToggle : MonoBehaviour
     {
         isMRActive = !isMRActive;
         passthroughLayer.enabled = isMRActive;
-        OVRManager.boundary.SetVisible(!isMRActive);
     }
 }

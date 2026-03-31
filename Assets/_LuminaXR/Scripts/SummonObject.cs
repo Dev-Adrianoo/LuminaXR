@@ -4,9 +4,10 @@ using UnityEngine.XR.Hands;
 using UnityEngine.XR.Management;
 
 /// <summary>
-/// Palma aberta virada para cima atrai o objeto até a mão.
+/// Magnet — palma aberta virada para cima atrai o objeto até a mão.
 /// Se ambas as mãos estiverem abertas, prioriza a direita.
 /// Feedback visual no objeto enquanto está sendo atraído.
+/// Expõe IsActive para que outros scripts saibam quando o gesto está em curso.
 /// </summary>
 public class SummonObject : MonoBehaviour
 {
@@ -22,6 +23,11 @@ public class SummonObject : MonoBehaviour
     private Vector3 _originalScale;
 
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+
+    public bool IsActive { get; private set; }
+    private bool _isLeftActive;
+    private bool _isRightActive;
+    public bool IsActiveForHand(bool isLeft) => isLeft ? _isLeftActive : _isRightActive;
 
     private void OnEnable()
     {
@@ -49,7 +55,6 @@ public class SummonObject : MonoBehaviour
             return;
         }
 
-        // Prioriza direita se as duas estiverem abertas
         Pose targetPalm = rightPalmUp ? rightPalm : leftPalm;
 
         float distance = Vector3.Distance(_target.position, targetPalm.position);
@@ -59,6 +64,9 @@ public class SummonObject : MonoBehaviour
             return;
         }
 
+        IsActive = true;
+        _isLeftActive = leftPalmUp && !rightPalmUp;
+        _isRightActive = rightPalmUp;
         _target.position = Vector3.Lerp(_target.position, targetPalm.position, _pullSpeed * Time.deltaTime);
         PlayFeedback();
     }
@@ -69,16 +77,13 @@ public class SummonObject : MonoBehaviour
         if (!hand.isTracked) return false;
         if (!hand.GetJoint(XRHandJointID.Palm).TryGetPose(out palmPose)) return false;
 
-        // Verifica se o vetor "up" da palma aponta para cima no mundo
         float dot = Vector3.Dot(-palmPose.up, Vector3.up);
         if (dot <= _palmUpThreshold) return false;
 
-        // Bloqueia se polegar e médio estiverem próximos — postura de snap
         if (!hand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumb)) return false;
         if (!hand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out Pose middleSnap)) return false;
         if (Vector3.Distance(thumb.position, middleSnap.position) < 0.04f) return false;
 
-        // Verifica se os 4 dedos estão estendidos (longe da palma)
         if (!hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose index)) return false;
         if (!hand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out Pose middle)) return false;
         if (!hand.GetJoint(XRHandJointID.RingTip).TryGetPose(out Pose ring)) return false;
@@ -93,11 +98,9 @@ public class SummonObject : MonoBehaviour
 
     private void PlayFeedback()
     {
-        // Pulsação de escala
         float pulse = 1f + Mathf.Sin(Time.time * 8f) * 0.04f;
         _target.localScale = _originalScale * pulse;
 
-        // Tinge levemente de azul
         if (_renderer != null)
         {
             _renderer.GetPropertyBlock(_mpb);
@@ -108,6 +111,9 @@ public class SummonObject : MonoBehaviour
 
     private void StopFeedback()
     {
+        IsActive = false;
+        _isLeftActive = false;
+        _isRightActive = false;
         if (_target == null) return;
         _target.localScale = _originalScale;
 

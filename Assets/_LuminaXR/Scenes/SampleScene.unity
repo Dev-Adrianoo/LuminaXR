@@ -565,6 +565,8 @@ GameObject:
   - component: {fileID: 374890319}
   - component: {fileID: 374890324}
   - component: {fileID: 374890325}
+  - component: {fileID: 374890327}
+  - component: {fileID: 374890326}
   m_Layer: 0
   m_Name: '[BuildingBlock] Camera Rig'
   m_TagString: Untagged
@@ -817,6 +819,32 @@ MonoBehaviour:
   rightFillImage: {fileID: 1218550070}
   holdDuration: 2
   fistThreshold: 0.07
+--- !u!114 &374890326
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 374890318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09f1d5967fdc01d4cbbced8a6b620f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HandCollider
+  _colliderRadius: 0.04
+--- !u!114 &374890327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 374890318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 231ce1701bcd84846bb87f208df7ced4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HandModeManager
+  modePriority: 03000000010000000200000000000000
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0

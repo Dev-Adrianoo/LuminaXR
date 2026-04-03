@@ -113,11 +113,54 @@ public class WristRotation : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Aplica rotação trackball ao target com base no delta de posição do pinch.
+    /// Delta horizontal (X) → rotação em Y. Delta vertical (Y) → rotação em X.
+    /// </summary>
+    private void ApplyRotation(Vector3 currentPinchPoint, ref Vector3 lastPinchPoint, ref bool firstFrame)
+    {
+        if (firstFrame)
+        {
+            lastPinchPoint = currentPinchPoint;
+            firstFrame = false;
+            return;
+        }
+
+        Vector3 rawDelta    = currentPinchPoint - lastPinchPoint;
+        Vector3 smoothDelta = Vector3.Lerp(Vector3.zero, rawDelta, rotationDamping);
+
+        float rotateY = smoothDelta.x * rotationSpeed;
+        float rotateX = smoothDelta.y * rotationSpeed;
+
+        target.Rotate(rotateX, rotateY, 0f, Space.World);
+
+        lastPinchPoint = currentPinchPoint;
+    }
+
+    private Vector3 GetPinchPoint(XRHand hand)
+    {
+        hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose);
+        hand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out Pose middlePose);
+        return (indexPose.position + middlePose.position) * 0.5f;
+    }
+
     void Update()
     {
         if (_handSubsystem == null || !_handSubsystem.running || target == null) return;
 
         CheckGesture(_handSubsystem.rightHand, ref _isPinchingRight, ref _firstFrameRight, ref _lastPinchRight);
         CheckGesture(_handSubsystem.leftHand,  ref _isPinchingLeft,  ref _firstFrameLeft,  ref _lastPinchLeft);
+
+        // Mão direita tem prioridade
+        if (_isPinchingRight)
+        {
+            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.rightHand);
+            ApplyRotation(pinchPoint, ref _lastPinchRight, ref _firstFrameRight);
+        }
+        else if (_isPinchingLeft)
+        {
+            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.leftHand);
+            ApplyRotation(pinchPoint, ref _lastPinchLeft, ref _firstFrameLeft);
+        }
     }
 }

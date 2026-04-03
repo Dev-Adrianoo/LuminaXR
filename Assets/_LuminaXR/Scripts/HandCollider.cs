@@ -11,6 +11,7 @@ using UnityEngine.XR.Management;
 public class HandCollider : MonoBehaviour
 {
     [SerializeField] private float _colliderRadius = 0.04f;
+    [SerializeField] private float _maxPushSpeed = 0.5f;
 
     private XRHandSubsystem _handSubsystem;
     private HandModeManager _modeManager;
@@ -20,13 +21,17 @@ public class HandCollider : MonoBehaviour
     private Collider _colliderLeft;
     private Collider _colliderRight;
 
+
+    private void Start()
+    {
+        _modeManager = HandModeManager.Instance;
+    }
+
     private void OnEnable()
     {
         var subsystems = new List<XRHandSubsystem>();
         SubsystemManager.GetSubsystems(subsystems);
         _handSubsystem = subsystems.Count > 0 ? subsystems[0] : null;
-
-        _modeManager = HandModeManager.Instance;
 
         _rbLeft = CreatePalmCollider("LeftPalmCollider");
         _rbRight = CreatePalmCollider("RightPalmCollider");
@@ -73,10 +78,26 @@ public class HandCollider : MonoBehaviour
         }
 
         bool isNeutral = _modeManager.GetMode(isLeft) == HandMode.Neutral;
-        Debug.Log($"{(isLeft ? "Left" : "Right")} mode: {_modeManager.GetMode(isLeft)} | collider: {isNeutral}");
         col.enabled = isNeutral;
 
         if (isNeutral)
+        {
             rb.MovePosition(palmPose.position);
+            ClampNearbyRigidbodies(palmPose.position);
+        }
+    }
+
+    private void ClampNearbyRigidbodies(Vector3 center)
+    {
+        var hits = Physics.OverlapSphere(center, _colliderRadius * 1.5f);
+        foreach (var hit in hits)
+        {
+            var hitRb = hit.attachedRigidbody;
+            if (hitRb == null || hitRb.isKinematic) continue;
+            if (hitRb.linearVelocity.magnitude > _maxPushSpeed)
+                hitRb.linearVelocity = hitRb.linearVelocity.normalized * _maxPushSpeed;
+            hitRb.angularVelocity = Vector3.zero;
+            // hitRb.useGravity = true; // ativar quando houver chão na cena
+        }
     }
 }

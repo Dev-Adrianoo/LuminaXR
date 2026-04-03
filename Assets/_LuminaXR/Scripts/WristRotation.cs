@@ -16,7 +16,7 @@ public class WristRotation : MonoBehaviour
 
     [Header("Rotação")]
     public float rotationSpeed = 180f;
-    public float rotationDamping = 0.15f;
+    public float rotationSensitivity = 0.15f;
 
     [Header("Referência")]
     public Transform target;
@@ -68,7 +68,6 @@ public class WristRotation : MonoBehaviour
     /// <summary>
     /// Verifica se o gesto de pinch está ativo para uma mão.
     /// Hysteresis: ativa em fingerPinchThreshold, desativa em fingerReleaseThreshold.
-    /// Gerencia isKinematic do Rigidbody do target.
     /// </summary>
     private void CheckGesture(
         XRHand hand,
@@ -93,22 +92,18 @@ public class WristRotation : MonoBehaviour
 
         if (isPinching)
         {
-            // Sai do gesto se abriu os dedos, saiu do raio ou está sobre vértice
             if (thumbIndexDist > fingerReleaseThreshold || !handInRange || vertexNearby)
             {
                 isPinching = false;
-                if (_rb != null) _rb.isKinematic = false;
             }
         }
         else
         {
-            // Entra no gesto se dedos fechados, dentro do raio, sem vértice próximo
             if (thumbIndexDist < fingerPinchThreshold && handInRange && !vertexNearby)
             {
                 isPinching = true;
                 firstFrame = true;
                 lastPinchPoint = pinchPoint;
-                if (_rb != null) _rb.isKinematic = true;
             }
         }
     }
@@ -127,7 +122,7 @@ public class WristRotation : MonoBehaviour
         }
 
         Vector3 rawDelta    = currentPinchPoint - lastPinchPoint;
-        Vector3 smoothDelta = Vector3.Lerp(Vector3.zero, rawDelta, rotationDamping);
+        Vector3 smoothDelta = Vector3.Lerp(Vector3.zero, rawDelta, rotationSensitivity);
 
         float rotateY = smoothDelta.x * rotationSpeed;
         float rotateX = smoothDelta.y * rotationSpeed;
@@ -137,10 +132,11 @@ public class WristRotation : MonoBehaviour
         lastPinchPoint = currentPinchPoint;
     }
 
-    private Vector3 GetPinchPoint(XRHand hand)
+    private Vector3 GetPinchPoint(XRHand hand, Vector3 fallback)
     {
-        hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose);
-        hand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out Pose middlePose);
+        bool hasIndex  = hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose);
+        bool hasMiddle = hand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out Pose middlePose);
+        if (!hasIndex || !hasMiddle) return fallback;
         return (indexPose.position + middlePose.position) * 0.5f;
     }
 
@@ -151,15 +147,18 @@ public class WristRotation : MonoBehaviour
         CheckGesture(_handSubsystem.rightHand, ref _isPinchingRight, ref _firstFrameRight, ref _lastPinchRight);
         CheckGesture(_handSubsystem.leftHand,  ref _isPinchingLeft,  ref _firstFrameLeft,  ref _lastPinchLeft);
 
+        if (_rb != null)
+            _rb.isKinematic = _isPinchingRight || _isPinchingLeft;
+
         // Mão direita tem prioridade
         if (_isPinchingRight)
         {
-            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.rightHand);
+            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.rightHand, _lastPinchRight);
             ApplyRotation(pinchPoint, ref _lastPinchRight, ref _firstFrameRight);
         }
         else if (_isPinchingLeft)
         {
-            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.leftHand);
+            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.leftHand, _lastPinchLeft);
             ApplyRotation(pinchPoint, ref _lastPinchLeft, ref _firstFrameLeft);
         }
     }

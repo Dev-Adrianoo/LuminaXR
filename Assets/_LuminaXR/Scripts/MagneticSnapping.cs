@@ -109,6 +109,11 @@ public class MagneticSnapping : MonoBehaviour
 
         if (isPinching && snapped == null)
         {
+            if (HandModeManager.Instance != null)
+            {
+                HandMode mode = HandModeManager.Instance.GetMode(isLeft);
+                if (mode == HandMode.Rotate) return;
+            }
             Transform found = SearchForVertex(origin, isLeft);
             if (isLeft) snappedLeft = found;
             else snappedRight = found;

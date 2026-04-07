@@ -41,6 +41,13 @@ VertexHUD.cs — texto flutuante (TMP 3D) mostrando distância durante arrasto
 - Cache Shader.PropertyToID as static readonly int
 - Comments: Portuguese · Code: English
 
+## Architecture Rule: HandModeManager is the single authority for gesture mode resolution
+- Scripts **NEVER** consult each other for conflict resolution. No `MagneticSnapping` → `WristRotation`, no `WristRotation` → `MagneticSnapping`.
+- Each gesture script only reports `IsActiveForHand(bool isLeft)` — that's it.
+- `HandModeManager.GetMode(isLeft)` is the **only** way to check what a hand is doing.
+- If a script needs to know "can I activate?", it asks `HandModeManager.GetMode(isLeft)` and checks if the returned mode conflicts.
+- New gesture scripts follow this pattern: expose `IsActiveForHand()`, consult `HandModeManager` before activating.
+
 ## Setup
 Layer: VertexTarget → all interactable spheres
 OpenXR (Windows): Hand Interaction Poses, Meta Quest Support,

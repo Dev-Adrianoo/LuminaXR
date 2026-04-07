@@ -2,21 +2,18 @@ using UnityEngine;
 using UnityEngine.XR.Hands;
 using UnityEngine.XR.Management;
 
-/// <summary>
-/// Detecta gesto de pinch no ar (indicador + polegar) e rotaciona o objeto alvo
-/// como um trackball virtual. Delta horizontal da mão → eixo Y, delta vertical → eixo X.
-/// Mão direita tem prioridade quando ambas estão ativas simultaneamente.
-/// </summary>
+/// Detecta pinch (indicador + polegar) e rotaciona o objeto alvo usando a orientacao
+/// da palma como trackball. Ao soltar, momentum continua a rotacao com drag.
 public class WristRotation : MonoBehaviour
 {
     [Header("Detecção")]
-    public float fingerPinchThreshold = 0.04f;
-    public float fingerReleaseThreshold = 0.06f;
+    public float fingerPinchThreshold = 0.008f;
+    public float fingerReleaseThreshold = 0.015f;
     public float rotationRange = 0.30f;
 
-    [Header("Rotação")]
-    public float rotationSpeed = 180f;
-    public float rotationSensitivity = 0.15f;
+    [Header("Momentum")]
+    public float momentumDrag = 5.0f;
+    public float momentumMinSpeed = 0.5f;
 
     [Header("Referência")]
     public Transform target;
@@ -30,17 +27,30 @@ public class WristRotation : MonoBehaviour
     private bool _firstFrameRight;
     private Vector3 _lastPinchLeft;
     private Vector3 _lastPinchRight;
+    private float _pinchStartDistLeft;
+    private float _pinchStartDistRight;
 
-    private static readonly int VertexTargetMask = 1 << 3; // Layer VertexTarget = 3
+    private Quaternion _lastPalmRotationLeft;
+    private Quaternion _lastPalmRotationRight;
 
-    /// <summary>
-    /// Mão direita tem prioridade. Esquerda só é ativa quando direita não está pinçando.
-    /// </summary>
+    private Vector3 _angularVelocity;
+    private Vector3[] _velocityBuffer = new Vector3[3];
+    private int _velocityIndex;
+
+    private bool _leftTracked;
+    private bool _rightTracked;
+    private Pose _leftIndexPose, _leftMiddlePose, _leftThumbPose, _leftPalmPose;
+    private Pose _rightIndexPose, _rightMiddlePose, _rightThumbPose, _rightPalmPose;
+
+    private static readonly int VertexTargetMask = 1 << 3;
+
     public bool IsActiveForHand(bool isLeft)
     {
         if (!isLeft) return _isPinchingRight;
         return _isPinchingLeft && !_isPinchingRight;
     }
+
+    public bool HasMomentum => _angularVelocity.sqrMagnitude > momentumMinSpeed * momentumMinSpeed;
 
     void OnEnable()
     {
@@ -49,11 +59,12 @@ public class WristRotation : MonoBehaviour
         if (subsystems.Count > 0)
         {
             _handSubsystem = subsystems[0];
+            _handSubsystem.updatedHands += OnUpdatedHands;
             _handSubsystem.Start();
         }
         else
         {
-            Debug.LogError("[WristRotation] XRHandSubsystem não encontrado.");
+            Debug.LogError("[WristRotation] XRHandSubsystem nao encontrado.");
         }
 
         if (target != null)
@@ -62,27 +73,81 @@ public class WristRotation : MonoBehaviour
 
     void OnDisable()
     {
+        if (_handSubsystem != null)
+            _handSubsystem.updatedHands -= OnUpdatedHands;
         _handSubsystem?.Stop();
+        _firstFrameLeft = false;
+        _firstFrameRight = false;
+        _angularVelocity = Vector3.zero;
     }
 
-    /// <summary>
-    /// Verifica se o gesto de pinch está ativo para uma mão.
-    /// Hysteresis: ativa em fingerPinchThreshold, desativa em fingerReleaseThreshold.
-    /// </summary>
+    private void OnUpdatedHands(XRHandSubsystem subsystem,
+        XRHandSubsystem.UpdateSuccessFlags flags,
+        XRHandSubsystem.UpdateType updateType)
+    {
+        if (subsystem.rightHand.isTracked)
+        {
+            bool allValid = subsystem.rightHand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out var rIndex)
+                          & subsystem.rightHand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out var rMiddle)
+                          & subsystem.rightHand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out var rThumb)
+                          & subsystem.rightHand.GetJoint(XRHandJointID.Palm).TryGetPose(out var rPalm);
+
+            if (allValid)
+            {
+                _rightTracked = true;
+                _rightIndexPose = rIndex;
+                _rightMiddlePose = rMiddle;
+                _rightThumbPose = rThumb;
+                _rightPalmPose = rPalm;
+            }
+            else
+            {
+                _rightTracked = false;
+            }
+        }
+        else
+        {
+            _rightTracked = false;
+        }
+
+        if (subsystem.leftHand.isTracked)
+        {
+            bool allValid = subsystem.leftHand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out var lIndex)
+                          & subsystem.leftHand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out var lMiddle)
+                          & subsystem.leftHand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out var lThumb)
+                          & subsystem.leftHand.GetJoint(XRHandJointID.Palm).TryGetPose(out var lPalm);
+
+            if (allValid)
+            {
+                _leftTracked = true;
+                _leftIndexPose = lIndex;
+                _leftMiddlePose = lMiddle;
+                _leftThumbPose = lThumb;
+                _leftPalmPose = lPalm;
+            }
+            else
+            {
+                _leftTracked = false;
+            }
+        }
+        else
+        {
+            _leftTracked = false;
+        }
+    }
+
     private void CheckGesture(
-        XRHand hand,
+        bool isTracked,
+        Pose indexPose,
+        Pose middlePose,
+        Pose thumbPose,
+        Pose palmPose,
+        bool isLeftHand,
         ref bool isPinching,
         ref bool firstFrame,
         ref Vector3 lastPinchPoint)
     {
-        if (!hand.isTracked) { isPinching = false; return; }
-
-        bool hasIndex  = hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose);
-        bool hasMiddle = hand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out Pose middlePose);
-        bool hasThumb  = hand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumbPose);
-        bool hasPalm   = hand.GetJoint(XRHandJointID.Palm).TryGetPose(out Pose palmPose);
-
-        if (!hasIndex || !hasMiddle || !hasThumb || !hasPalm) { isPinching = false; return; }
+        if (!isTracked) { isPinching = false; return; }
 
         Vector3 pinchPoint      = (indexPose.position + middlePose.position) * 0.5f;
         float   thumbIndexDist  = Vector3.Distance(indexPose.position, thumbPose.position);
@@ -92,7 +157,8 @@ public class WristRotation : MonoBehaviour
 
         if (isPinching)
         {
-            if (thumbIndexDist > fingerReleaseThreshold || !handInRange || vertexNearby)
+            bool distanceShifted = Mathf.Abs(distToTarget - (isLeftHand ? _pinchStartDistLeft : _pinchStartDistRight)) > 0.15f;
+            if (thumbIndexDist > fingerReleaseThreshold || !handInRange || distanceShifted || vertexNearby)
             {
                 isPinching = false;
             }
@@ -104,62 +170,88 @@ public class WristRotation : MonoBehaviour
                 isPinching = true;
                 firstFrame = true;
                 lastPinchPoint = pinchPoint;
+                _angularVelocity = Vector3.zero;
+                if (isLeftHand) _pinchStartDistLeft = distToTarget;
+                else _pinchStartDistRight = distToTarget;
             }
         }
     }
 
-    /// <summary>
-    /// Aplica rotação trackball ao target com base no delta de posição do pinch.
-    /// Delta horizontal (X) → rotação em Y. Delta vertical (Y) → rotação em X.
-    /// </summary>
-    private void ApplyRotation(Vector3 currentPinchPoint, ref Vector3 lastPinchPoint, ref bool firstFrame)
+    private void ApplyWristRotation(Quaternion currentPalmRot, ref Quaternion lastPalmRot, ref bool firstFrame)
     {
         if (firstFrame)
         {
-            lastPinchPoint = currentPinchPoint;
+            lastPalmRot = currentPalmRot;
             firstFrame = false;
+            for (int i = 0; i < _velocityBuffer.Length; i++)
+                _velocityBuffer[i] = Vector3.zero;
+            _velocityIndex = 0;
             return;
         }
 
-        Vector3 rawDelta    = currentPinchPoint - lastPinchPoint;
-        Vector3 smoothDelta = Vector3.Lerp(Vector3.zero, rawDelta, rotationSensitivity);
+        Quaternion deltaRot = currentPalmRot * Quaternion.Inverse(lastPalmRot);
+        deltaRot.ToAngleAxis(out float angle, out Vector3 axis);
 
-        float rotateY = smoothDelta.x * rotationSpeed;
-        float rotateX = smoothDelta.y * rotationSpeed;
+        if (angle > 180f) angle -= 360f;
 
-        target.Rotate(rotateX, rotateY, 0f, Space.World);
+        if (Mathf.Abs(angle) > 0.01f && axis.sqrMagnitude > 0.5f)
+        {
+            target.rotation = deltaRot * target.rotation;
 
-        lastPinchPoint = currentPinchPoint;
+            Vector3 frameVelocity = axis.normalized * (angle / Time.deltaTime);
+            _velocityBuffer[_velocityIndex] = frameVelocity;
+            _velocityIndex = (_velocityIndex + 1) % _velocityBuffer.Length;
+        }
+
+        lastPalmRot = currentPalmRot;
     }
 
-    private Vector3 GetPinchPoint(XRHand hand, Vector3 fallback)
+    private Vector3 SmoothedAngularVelocity()
     {
-        bool hasIndex  = hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose);
-        bool hasMiddle = hand.GetJoint(XRHandJointID.MiddleTip).TryGetPose(out Pose middlePose);
-        if (!hasIndex || !hasMiddle) return fallback;
-        return (indexPose.position + middlePose.position) * 0.5f;
+        Vector3 sum = Vector3.zero;
+        for (int i = 0; i < _velocityBuffer.Length; i++)
+            sum += _velocityBuffer[i];
+        return sum / _velocityBuffer.Length;
     }
 
     void Update()
     {
-        if (_handSubsystem == null || !_handSubsystem.running || target == null) return;
+        if (_handSubsystem == null || target == null) return;
 
-        CheckGesture(_handSubsystem.rightHand, ref _isPinchingRight, ref _firstFrameRight, ref _lastPinchRight);
-        CheckGesture(_handSubsystem.leftHand,  ref _isPinchingLeft,  ref _firstFrameLeft,  ref _lastPinchLeft);
+        bool wasPinching = _isPinchingRight || _isPinchingLeft;
 
-        if (_rb != null)
-            _rb.isKinematic = _isPinchingRight || _isPinchingLeft;
+        CheckGesture(
+            _rightTracked,
+            _rightIndexPose, _rightMiddlePose, _rightThumbPose, _rightPalmPose,
+            false, ref _isPinchingRight, ref _firstFrameRight, ref _lastPinchRight);
+        CheckGesture(
+            _leftTracked,
+            _leftIndexPose, _leftMiddlePose, _leftThumbPose, _leftPalmPose,
+            true, ref _isPinchingLeft, ref _firstFrameLeft, ref _lastPinchLeft);
 
-        // Mão direita tem prioridade
+        bool isPinching = _isPinchingRight || _isPinchingLeft;
+
+        if (wasPinching && !isPinching)
+            _angularVelocity = SmoothedAngularVelocity();
+
         if (_isPinchingRight)
         {
-            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.rightHand, _lastPinchRight);
-            ApplyRotation(pinchPoint, ref _lastPinchRight, ref _firstFrameRight);
+            ApplyWristRotation(_rightPalmPose.rotation, ref _lastPalmRotationRight, ref _firstFrameRight);
         }
         else if (_isPinchingLeft)
         {
-            Vector3 pinchPoint = GetPinchPoint(_handSubsystem.leftHand, _lastPinchLeft);
-            ApplyRotation(pinchPoint, ref _lastPinchLeft, ref _firstFrameLeft);
+            ApplyWristRotation(_leftPalmPose.rotation, ref _lastPalmRotationLeft, ref _firstFrameLeft);
         }
+        else if (HasMomentum)
+        {
+            target.Rotate(_angularVelocity * Time.deltaTime, Space.World);
+            _angularVelocity *= 1f - momentumDrag * Time.deltaTime;
+
+            if (_angularVelocity.magnitude < momentumMinSpeed)
+                _angularVelocity = Vector3.zero;
+        }
+
+        if (_rb != null)
+            _rb.isKinematic = isPinching || HasMomentum;
     }
 }

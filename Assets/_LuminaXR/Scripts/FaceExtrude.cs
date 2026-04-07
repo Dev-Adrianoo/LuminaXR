@@ -166,7 +166,7 @@ public class FaceExtrude : MonoBehaviour
 
         // Offset novos vertices por epsilon na normal para desambiguar do vertexMap
         Vector3 localNormal = target.InverseTransformDirection(_extrudeNormal).normalized;
-        float epsilon = 0.001f;
+        float epsilon = 0.002f;
         var vertsArray = newVerts.ToArray();
         for (int i = 0; i < 4; i++)
             vertsArray[newMeshIndices[i]] += localNormal * epsilon;

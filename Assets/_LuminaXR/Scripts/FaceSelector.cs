@@ -226,16 +226,6 @@ public class FaceSelector : MonoBehaviour
         bool hasThumb = hand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumbPose);
         if (!hasIndex || !hasThumb) { ClearSelection(isLeft); return; }
 
-        if (HandModeManager.Instance != null)
-        {
-            HandMode mode = HandModeManager.Instance.GetMode(isLeft);
-            if (mode != HandMode.Neutral && mode != HandMode.Extrude)
-            {
-                ClearSelection(isLeft);
-                return;
-            }
-        }
-
         Vector3 handPoint = (indexPose.position + thumbPose.position) * 0.5f;
         Transform[] spheres = _deformer.Spheres;
 

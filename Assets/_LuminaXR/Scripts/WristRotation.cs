@@ -157,6 +157,17 @@ public class WristRotation : MonoBehaviour
 
         if (isPinching)
         {
+            // Cancela se modo de maior prioridade ativou
+            if (HandModeManager.Instance != null)
+            {
+                HandMode mode = HandModeManager.Instance.GetMode(isLeftHand);
+                if (mode != HandMode.Neutral && mode != HandMode.Rotate)
+                {
+                    isPinching = false;
+                    return;
+                }
+            }
+
             bool distanceShifted = Mathf.Abs(distToTarget - (isLeftHand ? _pinchStartDistLeft : _pinchStartDistRight)) > 0.15f;
             if (thumbIndexDist > fingerReleaseThreshold || !handInRange || distanceShifted || vertexNearby)
             {

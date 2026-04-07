@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum HandMode { Neutral, Grab, Magnet, Modeling, Rotate }
+public enum HandMode { Neutral, Grab, Magnet, Modeling, Rotate, Extrude }
 
 /// <summary>
 /// Singleton que centraliza o modo gestual de cada mão.
@@ -13,6 +13,7 @@ public class HandModeManager : MonoBehaviour
 
     [Header("Prioridade de Modos (topo = maior prioridade)")]
     public HandMode[] modePriority = {
+        HandMode.Extrude,
         HandMode.Modeling,
         HandMode.Rotate,
         HandMode.Grab,
@@ -24,6 +25,7 @@ public class HandModeManager : MonoBehaviour
     private SummonObject _magnet;
     private MagneticSnapping _modeling;
     private WristRotation _rotate;
+    private FaceSelector _extrude;
 
     private void Awake()
     {
@@ -37,6 +39,7 @@ public class HandModeManager : MonoBehaviour
         _magnet = FindAnyObjectByType<SummonObject>();
         _modeling = FindAnyObjectByType<MagneticSnapping>();
         _rotate = FindAnyObjectByType<WristRotation>();
+        _extrude = FindAnyObjectByType<FaceSelector>();
     }
 
     public HandMode GetMode(bool isLeft)
@@ -56,6 +59,7 @@ public class HandModeManager : MonoBehaviour
             HandMode.Rotate   => _rotate != null && _rotate.IsActiveForHand(isLeft),
             HandMode.Grab     => _grab != null && _grab.IsActiveForHand(isLeft),
             HandMode.Magnet   => _magnet != null && _magnet.IsActiveForHand(isLeft),
+            HandMode.Extrude  => _extrude != null && _extrude.IsActiveForHand(isLeft),
             _                 => false
         };
     }

@@ -7,8 +7,8 @@ using UnityEngine.XR.Management;
 public class WristRotation : MonoBehaviour
 {
     [Header("Detecção")]
-    public float fingerPinchThreshold = 0.008f;
-    public float fingerReleaseThreshold = 0.015f;
+    public float fingerPinchThreshold = 0.004f;
+    public float fingerReleaseThreshold = 0.010f;
     public float rotationRange = 0.30f;
 
     [Header("Momentum")]

@@ -23,6 +23,7 @@ public class FaceExtrude : MonoBehaviour
     private int[] _newSphereIndices;
     private Vector3[] _newSphereStartPositions;
     private VertexHUD _activeHUD;
+    private bool _savedIsKinematic;
 
     public bool IsExtruding => _isExtrudingLeft || _isExtrudingRight;
 
@@ -49,8 +50,8 @@ public class FaceExtrude : MonoBehaviour
         ProcessHand(_handSubsystem.leftHand, true);
         ProcessHand(_handSubsystem.rightHand, false);
 
-        if (_rb != null)
-            _rb.isKinematic = _isExtrudingLeft || _isExtrudingRight || _rb.isKinematic;
+        if (_rb != null && IsExtruding)
+            _rb.isKinematic = true;
     }
 
     private void ProcessHand(XRHand hand, bool isLeft)
@@ -101,6 +102,12 @@ public class FaceExtrude : MonoBehaviour
 
         _extrudeNormal = face.normal;
         _extrudeStartHand = handPoint;
+
+        if (_rb != null)
+        {
+            _savedIsKinematic = _rb.isKinematic;
+            _rb.isKinematic = true;
+        }
 
         Transform[] spheres = _deformer.Spheres;
         Mesh mesh = _deformer.SharedMesh;
@@ -169,15 +176,16 @@ public class FaceExtrude : MonoBehaviour
             _newSphereStartPositions[i] = worldPos;
 
             GameObject marker = Instantiate(vertexMarkerPrefab, worldPos, Quaternion.identity);
+            marker.transform.SetParent(target);
             marker.transform.localScale = spheres[0].localScale;
             marker.layer = spheres[0].gameObject.layer;
             marker.name = $"Vertex_Extruded_{i}";
-            marker.transform.SetParent(target);
+            Rigidbody markerRb = marker.GetComponent<Rigidbody>();
+            if (markerRb != null) Destroy(markerRb);
             _newSphereIndices[i] = target.childCount - 1;
         }
 
         _deformer.RebuildVertexMap();
-        _selector.BuildFaceList();
 
         Transform firstNew = _deformer.Spheres[_newSphereIndices[0]];
         _activeHUD = firstNew.GetComponent<VertexHUD>();
@@ -199,6 +207,14 @@ public class FaceExtrude : MonoBehaviour
             }
         }
 
+        // Feedback visual: linhas do ponto inicial ao atual
+        for (int i = 0; i < 4; i++)
+        {
+            int sphereIdx = _newSphereIndices[i];
+            if (sphereIdx < spheres.Length)
+                Debug.DrawLine(_newSphereStartPositions[i], spheres[sphereIdx].position, Color.cyan);
+        }
+
         if (_activeHUD != null) _activeHUD.UpdateHUD();
     }
 
@@ -206,6 +222,9 @@ public class FaceExtrude : MonoBehaviour
     {
         if (isLeft) _isExtrudingLeft = false;
         else _isExtrudingRight = false;
+
+        if (_rb != null)
+            _rb.isKinematic = _savedIsKinematic;
 
         if (_activeHUD != null)
         {

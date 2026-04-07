@@ -15,7 +15,7 @@ public class MagneticSnapping : MonoBehaviour
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
     [Header("Configurações Magnéticas")]
-    public float magneticRadius = 0.05f;
+    public float magneticRadius = 0.025f;
     public LayerMask vertexLayer;
 
     [Header("Dampening (Filtro de Jitter)")]
@@ -112,7 +112,7 @@ public class MagneticSnapping : MonoBehaviour
             if (HandModeManager.Instance != null)
             {
                 HandMode mode = HandModeManager.Instance.GetMode(isLeft);
-                if (mode == HandMode.Rotate) return;
+                if (mode == HandMode.Rotate || mode == HandMode.Extrude) return;
             }
             Transform found = SearchForVertex(origin, isLeft);
             if (isLeft) snappedLeft = found;

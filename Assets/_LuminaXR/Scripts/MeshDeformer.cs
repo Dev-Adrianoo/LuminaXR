@@ -1,12 +1,17 @@
 using UnityEngine;
 
+/// Mapeia cada esfera aos vertices reais da mesh. A cada frame move os vertices
+/// junto com as esferas. RebuildVertexMap() permite reconstruir apos extrude.
 public class MeshDeformer : MonoBehaviour
 {
-
     private Mesh mesh;
     private Vector3[] vertices;
     private Transform[] spheres;
     private int[][] vertexMap;
+
+    public Mesh SharedMesh => mesh;
+    public int[][] VertexMap => vertexMap;
+    public Transform[] Spheres => spheres;
 
 
     void Start()
@@ -43,7 +48,21 @@ public class MeshDeformer : MonoBehaviour
 
     }
 
-      void BuildVertexMap()
+    public void RebuildVertexMap()
+    {
+        vertices = mesh.vertices;
+
+        spheres = new Transform[transform.childCount];
+        for (int i = 0; i < spheres.Length; i++)
+        {
+            spheres[i] = transform.GetChild(i);
+        }
+
+        vertexMap = new int[spheres.Length][];
+        BuildVertexMap();
+    }
+
+    void BuildVertexMap()
     {
         for(int i = 0; i <  spheres.Length; i++)
         {

@@ -164,15 +164,23 @@ public class FaceExtrude : MonoBehaviour
             newTris.Add(newI);
         }
 
-        mesh.vertices = newVerts.ToArray();
+        // Offset novos vertices por epsilon na normal para desambiguar do vertexMap
+        Vector3 localNormal = target.InverseTransformDirection(_extrudeNormal).normalized;
+        float epsilon = 0.001f;
+        var vertsArray = newVerts.ToArray();
+        for (int i = 0; i < 4; i++)
+            vertsArray[newMeshIndices[i]] += localNormal * epsilon;
+
+        mesh.vertices = vertsArray;
         mesh.triangles = newTris.ToArray();
         mesh.RecalculateNormals();
 
+        // Posicao inicial das novas esferas = original + epsilon em world space
         _newSphereIndices = new int[4];
         _newSphereStartPositions = new Vector3[4];
         for (int i = 0; i < 4; i++)
         {
-            Vector3 worldPos = spheres[face.sphereIndices[i]].position;
+            Vector3 worldPos = spheres[face.sphereIndices[i]].position + _extrudeNormal * epsilon;
             _newSphereStartPositions[i] = worldPos;
 
             GameObject marker = Instantiate(vertexMarkerPrefab, worldPos, Quaternion.identity);

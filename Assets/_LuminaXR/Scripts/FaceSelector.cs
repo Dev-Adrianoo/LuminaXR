@@ -44,28 +44,22 @@ public class FaceSelector : MonoBehaviour
 
     public List<FaceData> Faces => _faces;
 
+    private bool _facesBuilt;
+
     void OnEnable()
     {
         var subsystems = new List<XRHandSubsystem>();
         SubsystemManager.GetSubsystems(subsystems);
         if (subsystems.Count > 0)
-        {
             _handSubsystem = subsystems[0];
-            _handSubsystem.Start();
-        }
 
         if (target != null)
             _deformer = target.GetComponent<MeshDeformer>();
     }
 
-    void Start()
-    {
-        if (_deformer != null)
-            BuildFaceList();
-    }
-
     public void BuildFaceList()
     {
+        _facesBuilt = true;
         _faces.Clear();
         Mesh mesh = _deformer.SharedMesh;
         Vector3[] verts = mesh.vertices;
@@ -183,6 +177,14 @@ public class FaceSelector : MonoBehaviour
     void Update()
     {
         if (_handSubsystem == null || target == null || _deformer == null) return;
+
+        if (!_facesBuilt && _deformer.SharedMesh != null)
+        {
+            BuildFaceList();
+            _facesBuilt = true;
+        }
+
+        if (_faces.Count == 0) return;
 
         UpdateFaceCentroids();
 

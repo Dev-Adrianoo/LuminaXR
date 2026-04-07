@@ -165,6 +165,12 @@ public class WristRotation : MonoBehaviour
         }
         else
         {
+            if (HandModeManager.Instance != null)
+            {
+                HandMode mode = HandModeManager.Instance.GetMode(isLeftHand);
+                if (mode != HandMode.Neutral && mode != HandMode.Rotate) return;
+            }
+
             if (thumbIndexDist < fingerPinchThreshold && handInRange && !vertexNearby)
             {
                 isPinching = true;

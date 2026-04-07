@@ -31,10 +31,7 @@ public class FaceExtrude : MonoBehaviour
         var subsystems = new List<XRHandSubsystem>();
         SubsystemManager.GetSubsystems(subsystems);
         if (subsystems.Count > 0)
-        {
             _handSubsystem = subsystems[0];
-            _handSubsystem.Start();
-        }
 
         if (target != null)
         {

@@ -24,8 +24,12 @@ public class FaceExtrude : MonoBehaviour
     private Vector3[] _newSphereStartPositions;
     private VertexHUD _activeHUD;
     private bool _savedIsKinematic;
+    private LineRenderer[] _extrudeLines;
+    private static Material _dashMaterial;
 
     public bool IsExtruding => _isExtrudingLeft || _isExtrudingRight;
+
+    public bool IsActiveForHand(bool isLeft) => _isExtrudingLeft || _isExtrudingRight;
 
     void OnEnable()
     {
@@ -175,12 +179,12 @@ public class FaceExtrude : MonoBehaviour
         mesh.triangles = newTris.ToArray();
         mesh.RecalculateNormals();
 
-        // Posicao inicial das novas esferas = original + epsilon em world space
+        // Posicao inicial das novas esferas derivada do vertice local (garante match com vertexMap)
         _newSphereIndices = new int[4];
         _newSphereStartPositions = new Vector3[4];
         for (int i = 0; i < 4; i++)
         {
-            Vector3 worldPos = spheres[face.sphereIndices[i]].position + _extrudeNormal * epsilon;
+            Vector3 worldPos = target.TransformPoint(vertsArray[newMeshIndices[i]]);
             _newSphereStartPositions[i] = worldPos;
 
             GameObject marker = Instantiate(vertexMarkerPrefab, worldPos, Quaternion.identity);
@@ -193,11 +197,81 @@ public class FaceExtrude : MonoBehaviour
             _newSphereIndices[i] = target.childCount - 1;
         }
 
+        // DIAG: logar posicoes antes do rebuild para comparar
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 vertLocal = vertsArray[newMeshIndices[i]];
+            Transform newSphere = target.GetChild(_newSphereIndices[i]);
+            Vector3 sphereLocal = target.InverseTransformPoint(newSphere.position);
+            float dist = Vector3.Distance(vertLocal, sphereLocal);
+            Debug.Log($"[Extrude DIAG] NewVert[{i}] local={vertLocal}, " +
+                $"NewSphere[{i}] local={sphereLocal}, dist={dist:F6}, " +
+                $"threshold=0.001, epsilon={epsilon}");
+        }
+
         _deformer.RebuildVertexMap();
+
+        // DIAG: verificar resultado do rebuild
+        int[][] newMap = _deformer.VertexMap;
+        for (int i = 0; i < 4; i++)
+        {
+            int sIdx = _newSphereIndices[i];
+            Debug.Log($"[Extrude DIAG] After rebuild: sphere[{sIdx}] vertexMap.Length={newMap[sIdx].Length}");
+        }
 
         Transform firstNew = _deformer.Spheres[_newSphereIndices[0]];
         _activeHUD = firstNew.GetComponent<VertexHUD>();
         if (_activeHUD != null) _activeHUD.Show();
+
+        CreateExtrudeLines();
+    }
+
+    private void CreateExtrudeLines()
+    {
+        if (_dashMaterial == null)
+        {
+            // Textura pontilhada: 2px visivel + 2px transparente
+            Texture2D tex = new Texture2D(4, 1, TextureFormat.RGBA32, false);
+            tex.SetPixels(new[] { Color.white, Color.white, Color.clear, Color.clear });
+            tex.wrapMode = TextureWrapMode.Repeat;
+            tex.filterMode = FilterMode.Point;
+            tex.Apply();
+
+            Shader shader = Shader.Find("Sprites/Default");
+            _dashMaterial = new Material(shader);
+            _dashMaterial.mainTexture = tex;
+            _dashMaterial.color = Color.cyan;
+        }
+
+        _extrudeLines = new LineRenderer[4];
+        for (int i = 0; i < 4; i++)
+        {
+            GameObject go = new GameObject($"ExtrudeLine_{i}");
+            LineRenderer lr = go.AddComponent<LineRenderer>();
+            lr.material = _dashMaterial;
+            lr.startWidth = 0.002f;
+            lr.endWidth = 0.002f;
+            lr.positionCount = 2;
+            lr.useWorldSpace = true;
+            lr.textureMode = LineTextureMode.Tile;
+            lr.numCapVertices = 0;
+            lr.startColor = Color.cyan;
+            lr.endColor = Color.cyan;
+            lr.SetPosition(0, Vector3.zero);
+            lr.SetPosition(1, Vector3.zero);
+            _extrudeLines[i] = lr;
+        }
+    }
+
+    private void DestroyExtrudeLines()
+    {
+        if (_extrudeLines == null) return;
+        for (int i = 0; i < 4; i++)
+        {
+            if (_extrudeLines[i] != null)
+                Destroy(_extrudeLines[i].gameObject);
+        }
+        _extrudeLines = null;
     }
 
     private void MoveExtrude(Vector3 handPoint)
@@ -215,12 +289,18 @@ public class FaceExtrude : MonoBehaviour
             }
         }
 
-        // Feedback visual: linhas do ponto inicial ao atual
-        for (int i = 0; i < 4; i++)
+        // Feedback visual: linhas pontilhadas do ponto inicial ao atual
+        if (_extrudeLines != null)
         {
-            int sphereIdx = _newSphereIndices[i];
-            if (sphereIdx < spheres.Length)
-                Debug.DrawLine(_newSphereStartPositions[i], spheres[sphereIdx].position, Color.cyan);
+            for (int i = 0; i < 4; i++)
+            {
+                int sphereIdx = _newSphereIndices[i];
+                if (sphereIdx < spheres.Length && _extrudeLines[i] != null)
+                {
+                    _extrudeLines[i].SetPosition(0, _newSphereStartPositions[i]);
+                    _extrudeLines[i].SetPosition(1, spheres[sphereIdx].position);
+                }
+            }
         }
 
         if (_activeHUD != null) _activeHUD.UpdateHUD();
@@ -239,6 +319,8 @@ public class FaceExtrude : MonoBehaviour
             _activeHUD.Hide();
             _activeHUD = null;
         }
+
+        DestroyExtrudeLines();
 
         _selector.BuildFaceList();
 

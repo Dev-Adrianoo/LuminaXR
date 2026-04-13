@@ -70,13 +70,28 @@ public class MeshDeformer : MonoBehaviour
               Vector3 localPos = transform.InverseTransformPoint(spheres[i].position);
             for (int j = 0; j < vertices.Length; j++)
             {
-                
+
                 if (Vector3.Distance(vertices[j], localPos) < 0.001f)
                 {
                     matches.Add(j);
                 }
             }
             vertexMap[i] = matches.ToArray();
+
+            // DIAG: logar esferas sem match (indica vertex map quebrado)
+            if (matches.Count == 0)
+            {
+                float closestDist = float.MaxValue;
+                int closestVert = -1;
+                for (int j = 0; j < vertices.Length; j++)
+                {
+                    float d = Vector3.Distance(vertices[j], localPos);
+                    if (d < closestDist) { closestDist = d; closestVert = j; }
+                }
+                Debug.LogWarning($"[VertexMap] Sphere {i} '{spheres[i].name}' has 0 matches! " +
+                    $"localPos={localPos}, closest vert={closestVert} at dist={closestDist:F6}, " +
+                    $"vertPos={vertices[closestVert]}, scale={transform.lossyScale}");
+            }
         }
 
     }

@@ -567,6 +567,8 @@ GameObject:
   - component: {fileID: 374890325}
   - component: {fileID: 374890327}
   - component: {fileID: 374890326}
+  - component: {fileID: 374890329}
+  - component: {fileID: 374890328}
   m_Layer: 0
   m_Name: '[BuildingBlock] Camera Rig'
   m_TagString: Untagged
@@ -845,7 +847,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 231ce1701bcd84846bb87f208df7ced4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HandModeManager
-  modePriority: 0300000004000000010000000200000000000000
+  modePriority: 050000000300000004000000010000000200000000000000
+--- !u!114 &374890328
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 374890318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85ac40ef87857354aae0c98c25656c3d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FaceExtrude
+  target: {fileID: 1587376521}
+  vertexMarkerPrefab: {fileID: 419916162511951865, guid: afa07b09be663404b8e6bba472922068, type: 3}
+--- !u!114 &374890329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 374890318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee87486f68b67424facf8aba59158d15, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FaceSelector
+  detectionRange: 0.15
+  target: {fileID: 1587376521}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1647,7 +1677,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f477892844d715f41a22ac6e510ff0e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MagneticSnapping
-  magneticRadius: 0.05
+  magneticRadius: 0.025
   vertexLayer:
     serializedVersion: 2
     m_Bits: 8
@@ -2300,8 +2330,8 @@ MonoBehaviour:
   fingerPinchThreshold: 0.04
   fingerReleaseThreshold: 0.06
   rotationRange: 0.3
-  rotationSpeed: 180
-  rotationSensitivity: 0.15
+  momentumDrag: 5
+  momentumMinSpeed: 0.5
   target: {fileID: 1587376521}
 --- !u!1 &1774614351
 GameObject:

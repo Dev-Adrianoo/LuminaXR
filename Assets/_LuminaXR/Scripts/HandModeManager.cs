@@ -26,6 +26,7 @@ public class HandModeManager : MonoBehaviour
     private MagneticSnapping _modeling;
     private WristRotation _rotate;
     private FaceSelector _extrude;
+    private FaceExtrude _faceExtrude;
 
     private void Awake()
     {
@@ -40,6 +41,7 @@ public class HandModeManager : MonoBehaviour
         _modeling = FindAnyObjectByType<MagneticSnapping>();
         _rotate = FindAnyObjectByType<WristRotation>();
         _extrude = FindAnyObjectByType<FaceSelector>();
+        _faceExtrude = FindAnyObjectByType<FaceExtrude>();
     }
 
     public HandMode GetMode(bool isLeft)
@@ -59,7 +61,8 @@ public class HandModeManager : MonoBehaviour
             HandMode.Rotate   => _rotate != null && _rotate.IsActiveForHand(isLeft),
             HandMode.Grab     => _grab != null && _grab.IsActiveForHand(isLeft),
             HandMode.Magnet   => _magnet != null && _magnet.IsActiveForHand(isLeft),
-            HandMode.Extrude  => _extrude != null && _extrude.IsActiveForHand(isLeft),
+            HandMode.Extrude  => (_extrude != null && _extrude.IsActiveForHand(isLeft))
+                              || (_faceExtrude != null && _faceExtrude.IsActiveForHand(isLeft)),
             _                 => false
         };
     }
